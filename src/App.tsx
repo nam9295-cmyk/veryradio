@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
+import { getReconnectDelayMs, shouldAutoReconnect } from './reconnectPolicy'
 import { defaultStation } from './stations'
 
 type PlaybackState = 'idle' | 'loading' | 'playing' | 'paused' | 'error'
@@ -12,9 +13,16 @@ const statusCopy: Record<PlaybackState, string> = {
   error: '연결 오류',
 }
 
+const MAX_AUTO_RECONNECT_ATTEMPTS = 8
+const STALL_RECONNECT_DELAY_MS = 12000
+
 function App() {
   const station = defaultStation
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const reconnectTimeoutRef = useRef<number | null>(null)
+  const stallTimeoutRef = useRef<number | null>(null)
+  const reconnectAttemptsRef = useRef(0)
+  const userWantsPlaybackRef = useRef(false)
   const [playbackState, setPlaybackState] = useState<PlaybackState>('idle')
   const [volume, setVolume] = useState(0.82)
   const [errorMessage, setErrorMessage] = useState('')
@@ -30,43 +38,96 @@ function App() {
     [station.city, station.country, station.name],
   )
 
-  const play = useCallback(async () => {
+  const clearReconnectTimer = useCallback(() => {
+    if (reconnectTimeoutRef.current === null) return
+    window.clearTimeout(reconnectTimeoutRef.current)
+    reconnectTimeoutRef.current = null
+  }, [])
+
+  const clearStallTimer = useCallback(() => {
+    if (stallTimeoutRef.current === null) return
+    window.clearTimeout(stallTimeoutRef.current)
+    stallTimeoutRef.current = null
+  }, [])
+
+  const startPlayback = useCallback(async (forceFreshStream = false) => {
     const audio = audioRef.current
     if (!audio) return
 
+    clearReconnectTimer()
+    clearStallTimer()
     setErrorMessage('')
     setPlaybackState('loading')
 
+    if (forceFreshStream) {
+      audio.pause()
+      audio.removeAttribute('src')
+      audio.load()
+    }
+
     if (!audio.src) {
-      audio.src = station.streamUrl
+      const cacheBuster = forceFreshStream ? `?_=${Date.now()}` : ''
+      audio.src = `${station.streamUrl}${cacheBuster}`
     }
 
     try {
       await audio.play()
+      reconnectAttemptsRef.current = 0
       setPlaybackState('playing')
     } catch (error) {
       const message = error instanceof Error ? error.message : '재생을 시작할 수 없습니다.'
       setPlaybackState('error')
       setErrorMessage(message)
     }
-  }, [station.streamUrl])
+  }, [clearReconnectTimer, clearStallTimer, station.streamUrl])
+
+  const scheduleAutoReconnect = useCallback((reason: string) => {
+    clearReconnectTimer()
+    clearStallTimer()
+
+    const attempt = reconnectAttemptsRef.current
+    if (!shouldAutoReconnect({
+      userWantsPlayback: userWantsPlaybackRef.current,
+      attempt,
+      maxAttempts: MAX_AUTO_RECONNECT_ATTEMPTS,
+    })) {
+      setPlaybackState('error')
+      setErrorMessage('스트림 연결이 반복해서 끊겼습니다. 다시 연결을 눌러주세요.')
+      return
+    }
+
+    const delayMs = getReconnectDelayMs(attempt)
+    reconnectAttemptsRef.current = attempt + 1
+    setPlaybackState('loading')
+    setErrorMessage(`스트림이 잠시 끊겼습니다. 자동으로 다시 연결 중입니다. (${reason})`)
+
+    reconnectTimeoutRef.current = window.setTimeout(() => {
+      void startPlayback(true)
+    }, delayMs)
+  }, [clearReconnectTimer, clearStallTimer, startPlayback])
+
+  const play = useCallback(async () => {
+    userWantsPlaybackRef.current = true
+    await startPlayback(false)
+  }, [startPlayback])
 
   const pause = useCallback(() => {
     const audio = audioRef.current
     if (!audio) return
+    userWantsPlaybackRef.current = false
+    reconnectAttemptsRef.current = 0
+    clearReconnectTimer()
+    clearStallTimer()
     audio.pause()
+    setErrorMessage('')
     setPlaybackState('paused')
-  }, [])
+  }, [clearReconnectTimer, clearStallTimer])
 
   const reconnect = useCallback(async () => {
-    const audio = audioRef.current
-    if (!audio) return
-    audio.pause()
-    audio.removeAttribute('src')
-    audio.load()
-    audio.src = `${station.streamUrl}?_=${Date.now()}`
-    await play()
-  }, [play, station.streamUrl])
+    userWantsPlaybackRef.current = true
+    reconnectAttemptsRef.current = 0
+    await startPlayback(true)
+  }, [startPlayback])
 
   const togglePlayback = () => {
     if (isPlaying) {
@@ -87,23 +148,46 @@ function App() {
     const audio = audioRef.current
     if (!audio) return
 
-    const handleWaiting = () => setPlaybackState('loading')
+    const handleWaiting = () => {
+      if (!userWantsPlaybackRef.current) return
+      setPlaybackState('loading')
+      clearStallTimer()
+      stallTimeoutRef.current = window.setTimeout(() => {
+        scheduleAutoReconnect('버퍼 지연')
+      }, STALL_RECONNECT_DELAY_MS)
+    }
     const handlePlaying = () => {
+      clearReconnectTimer()
+      clearStallTimer()
+      reconnectAttemptsRef.current = 0
       setErrorMessage('')
       setPlaybackState('playing')
     }
-    const handlePause = () => setPlaybackState((state) => (state === 'error' ? 'error' : 'paused'))
-    const handleError = () => {
-      setPlaybackState('error')
-      setErrorMessage('스트림 연결이 끊겼습니다. 다시 연결을 눌러주세요.')
+    const handlePause = () => {
+      if (userWantsPlaybackRef.current) return
+      setPlaybackState((state) => (state === 'error' ? 'error' : 'paused'))
     }
-    const handleStalled = () => setPlaybackState('loading')
+    const handleError = () => {
+      scheduleAutoReconnect('연결 오류')
+    }
+    const handleStalled = () => {
+      if (!userWantsPlaybackRef.current) return
+      setPlaybackState('loading')
+      clearStallTimer()
+      stallTimeoutRef.current = window.setTimeout(() => {
+        scheduleAutoReconnect('스트림 정지')
+      }, STALL_RECONNECT_DELAY_MS)
+    }
+    const handleEnded = () => {
+      scheduleAutoReconnect('방송 연결 종료')
+    }
 
     audio.addEventListener('waiting', handleWaiting)
     audio.addEventListener('playing', handlePlaying)
     audio.addEventListener('pause', handlePause)
     audio.addEventListener('error', handleError)
     audio.addEventListener('stalled', handleStalled)
+    audio.addEventListener('ended', handleEnded)
 
     return () => {
       audio.removeEventListener('waiting', handleWaiting)
@@ -111,8 +195,11 @@ function App() {
       audio.removeEventListener('pause', handlePause)
       audio.removeEventListener('error', handleError)
       audio.removeEventListener('stalled', handleStalled)
+      audio.removeEventListener('ended', handleEnded)
+      clearReconnectTimer()
+      clearStallTimer()
     }
-  }, [])
+  }, [clearReconnectTimer, clearStallTimer, scheduleAutoReconnect])
 
   useEffect(() => {
     if (!('mediaSession' in navigator)) return
