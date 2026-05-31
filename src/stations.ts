@@ -14,7 +14,7 @@ export const stations: Station[] = [
     name: 'KIIS FM 102.7',
     city: 'Los Angeles',
     country: 'USA',
-    tagline: 'Live pop radio from LA',
+    tagline: '매장에 흐르는 LA 팝 라디오',
     streamUrl: 'https://stream.revma.ihrhls.com/zc185',
     codecHint: 'aac',
   },

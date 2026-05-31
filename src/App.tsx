@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
+import { DancingMascot } from './components/DancingMascot'
+import { RetroRadio } from './components/RetroRadio'
 import { getReconnectDelayMs, shouldAutoReconnect } from './reconnectPolicy'
 import { defaultStation } from './stations'
 
@@ -28,6 +30,7 @@ function App() {
   const [errorMessage, setErrorMessage] = useState('')
 
   const isPlaying = playbackState === 'playing' || playbackState === 'loading'
+  const cardClassName = `radio-card state-${playbackState}`
 
   const mediaMetadata = useMemo(
     () => ({
@@ -228,7 +231,7 @@ function App() {
     <main className="app-shell">
       <audio ref={audioRef} preload="none" playsInline crossOrigin="anonymous" />
 
-      <section className="radio-card" aria-label="베리굿 라디오 플레이어">
+      <section className={cardClassName} aria-label="베리굿 라디오 플레이어">
         <div className="brand-row">
           <span className="brand-mark" aria-hidden="true">VG</span>
           <div>
@@ -237,11 +240,21 @@ function App() {
           </div>
         </div>
 
+        <div className="visual-stage">
+          <RetroRadio state={playbackState} />
+          <DancingMascot state={playbackState} />
+        </div>
+
         <div className="station-panel">
-          <p className="station-kicker">Now streaming</p>
+          <p className="station-kicker">ON AIR FROM LA</p>
           <h2>{station.name}</h2>
           <p className="station-meta">{station.city} · {station.country} · {station.codecHint.toUpperCase()}</p>
           <p className="station-tagline">{station.tagline}</p>
+        </div>
+
+        <div className={`status-pill status-${playbackState}`} role="status" aria-live="polite">
+          <span className="status-dot" aria-hidden="true" />
+          {statusCopy[playbackState]}
         </div>
 
         <button
@@ -251,13 +264,8 @@ function App() {
           aria-label={isPlaying ? '라디오 일시정지' : '라디오 재생'}
         >
           <span className="play-icon" aria-hidden="true">{isPlaying ? 'Ⅱ' : '▶'}</span>
-          <span>{isPlaying ? '멈추기' : '재생'}</span>
+          <span>{isPlaying ? '잠시 멈추기' : '라디오 켜기'}</span>
         </button>
-
-        <div className={`status-pill status-${playbackState}`} role="status" aria-live="polite">
-          <span className="status-dot" aria-hidden="true" />
-          {statusCopy[playbackState]}
-        </div>
 
         {errorMessage && (
           <div className="error-box">
