@@ -6,13 +6,15 @@
 
 #root {
   min-height: 100vh;
+  min-height: 100svh;
 }
 
 .app-shell {
   min-height: 100vh;
+  min-height: 100svh;
   display: grid;
   place-items: center;
-  padding: 24px;
+  padding: clamp(12px, 2.4vmin, 24px);
   background:
     radial-gradient(circle at 18% 12%, rgba(255, 189, 98, 0.2), transparent 26rem),
     radial-gradient(circle at 84% 82%, rgba(90, 53, 34, 0.42), transparent 28rem),
@@ -48,6 +50,61 @@
 }
 
 .radio-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.club-board {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(150px, 0.56fr) minmax(0, 1fr);
+  grid-template-areas:
+    "visual station"
+    "controls controls";
+  align-items: center;
+  gap: clamp(10px, 2.4vmin, 24px);
+  min-height: clamp(330px, 58svh, 560px);
+  margin: 0 0 18px;
+  padding: clamp(18px, 3vmin, 34px);
+  border: 1px solid rgba(255, 189, 98, 0.38);
+  border-radius: 32px;
+  color: #ffdc9a;
+  background:
+    linear-gradient(rgba(255, 224, 150, 0.055) 50%, transparent 50%) 0 0 / 100% 6px,
+    repeating-linear-gradient(90deg, rgba(255, 189, 98, 0.11) 0 1px, transparent 1px 10px),
+    radial-gradient(circle at 15% 26%, rgba(255, 92, 56, 0.28), transparent 26%),
+    radial-gradient(circle at 82% 44%, rgba(255, 189, 98, 0.14), transparent 32%),
+    linear-gradient(180deg, rgba(35, 12, 9, 0.94), rgba(13, 8, 6, 0.96));
+  box-shadow:
+    inset 0 0 44px rgba(255, 123, 64, 0.17),
+    inset 0 1px rgba(255, 240, 215, 0.09),
+    0 0 48px rgba(255, 97, 54, 0.13);
+}
+
+.club-board::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: '';
+  background:
+    radial-gradient(circle at 16% 24%, rgba(255, 234, 176, 0.24) 0 1px, transparent 2px),
+    radial-gradient(circle at 44% 62%, rgba(255, 111, 72, 0.2) 0 1px, transparent 2px),
+    radial-gradient(circle at 78% 34%, rgba(255, 234, 176, 0.2) 0 1px, transparent 2px);
+  background-size: 18px 18px, 22px 22px, 20px 20px;
+  opacity: 0.78;
+}
+
+.club-board::after {
+  position: absolute;
+  inset: -36% -20%;
+  pointer-events: none;
+  content: '';
+  background: linear-gradient(110deg, transparent 28%, rgba(255, 244, 204, 0.15) 45%, transparent 62%);
+  transform: translateX(-48%);
+}
+
+.club-board > * {
   position: relative;
   z-index: 1;
 }
@@ -99,11 +156,41 @@ h1 {
 
 .visual-stage {
   position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-area: visual;
+  place-items: end center;
+  min-height: clamp(190px, 34svh, 400px);
+  margin: 0;
+  padding: 0;
+  border-radius: 28px;
+}
+
+.visual-stage::before {
+  position: absolute;
+  inset: auto 2% 4%;
+  content: 'ON AIR';
   display: grid;
   place-items: center;
-  min-height: 250px;
-  margin: 0 0 22px;
-  padding: 14px 8px 0;
+  min-height: 44px;
+  border: 1px solid rgba(255, 189, 98, 0.2);
+  border-radius: 999px;
+  color: rgba(255, 198, 94, 0.5);
+  background: rgba(20, 11, 8, 0.34);
+  box-shadow: inset 0 0 24px rgba(255, 92, 56, 0.1);
+  font-family: "Courier New", ui-monospace, monospace;
+  font-size: clamp(1rem, 2.4vw, 1.65rem);
+  font-weight: 950;
+  letter-spacing: 0.18em;
+  text-shadow:
+    0 0 8px rgba(255, 189, 98, 0.72),
+    0 0 20px rgba(255, 92, 56, 0.48),
+    0 0 34px rgba(255, 92, 56, 0.2);
+  mask-image: none;
+}
+
+.visual-stage::after {
+  display: none;
 }
 
 .retro-radio {
@@ -305,6 +392,97 @@ h1 {
   filter: blur(10px);
 }
 
+.nenne-dj {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 360px);
+  aspect-ratio: 1;
+  transform-origin: 50% 84%;
+  filter: drop-shadow(0 22px 34px rgba(0, 0, 0, 0.34));
+}
+
+.nenne-dj-glow {
+  position: absolute;
+  inset: 12% 6% 3%;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 48% 38%, rgba(255, 217, 156, 0.24), transparent 33%),
+    radial-gradient(circle at 50% 82%, rgba(255, 189, 98, 0.18), transparent 40%);
+  filter: blur(10px);
+  opacity: 0.86;
+}
+
+.nenne-dj-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  transform-origin: 50% 84%;
+  user-select: none;
+  pointer-events: none;
+}
+
+.nenne-dj-frame-1 {
+  opacity: 1;
+}
+
+.state-playing .club-board::after,
+.state-loading .club-board::after {
+  animation: sign-sweep 3.6s ease-in-out infinite;
+}
+
+.state-playing .visual-stage::before,
+.state-loading .visual-stage::before {
+  animation: sign-pulse 2.4s ease-in-out infinite;
+}
+
+.state-playing.audio-music .nenne-dj {
+  animation: nenne-bass-bounce 1.9s steps(8, end) infinite;
+}
+
+.state-playing.audio-music .nenne-dj-frame {
+  animation: nenne-dj-frames 1.9s steps(1, end) infinite;
+}
+
+.state-playing.audio-music .nenne-dj-frame-1 { animation-name: nenne-frame-1; }
+.state-playing.audio-music .nenne-dj-frame-2 { animation-name: nenne-frame-2; }
+.state-playing.audio-music .nenne-dj-frame-3 { animation-name: nenne-frame-3; }
+.state-playing.audio-music .nenne-dj-frame-4 { animation-name: nenne-frame-4; }
+.state-playing.audio-music .nenne-dj-frame-5 { animation-name: nenne-frame-5; }
+.state-playing.audio-music .nenne-dj-frame-6 { animation-name: nenne-frame-6; }
+
+.state-playing.audio-voice .nenne-dj {
+  animation: nenne-gentle-nod 2.6s ease-in-out infinite;
+}
+
+.state-playing.audio-silent .nenne-dj {
+  transform: rotate(-0.6deg);
+}
+
+.state-loading .nenne-dj {
+  animation: nenne-listening 1.15s ease-in-out infinite;
+}
+
+.state-loading .nenne-dj-frame-1,
+.state-loading .nenne-dj-frame-4 {
+  animation: nenne-loading-frames 1.15s steps(1, end) infinite;
+}
+
+.state-loading .nenne-dj-frame-4 {
+  animation-name: nenne-loading-frame-4;
+}
+
+.state-error .nenne-dj {
+  filter: drop-shadow(0 22px 34px rgba(0, 0, 0, 0.34)) saturate(0.78);
+}
+
+.state-paused .nenne-dj,
+.state-idle .nenne-dj {
+  transform: rotate(-0.6deg);
+}
+
 .mascot {
   position: absolute;
   right: 18px;
@@ -384,17 +562,43 @@ h1 {
 .mascot-foot-right { right: 13px; }
 
 .station-panel {
-  padding: 22px;
-  border: 1px solid rgba(255, 232, 205, 0.12);
-  border-radius: 26px;
-  background: linear-gradient(180deg, rgba(255, 240, 215, 0.08), rgba(255, 255, 255, 0.025));
+  overflow: visible;
+  position: relative;
+  grid-area: station;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: #ffdc9a;
+  background: transparent;
+  box-shadow: none;
+}
+
+.station-panel::before,
+.station-panel::after {
+  display: none;
+}
+
+.station-panel h2,
+.station-kicker,
+.station-meta,
+.station-tagline {
+  position: relative;
+  z-index: 1;
+  font-family: "Courier New", ui-monospace, monospace;
+  text-transform: uppercase;
 }
 
 .station-panel h2 {
-  margin-bottom: 8px;
-  font-size: clamp(2.05rem, 11vw, 3.7rem);
-  line-height: 0.9;
-  letter-spacing: -0.08em;
+  margin-bottom: 10px;
+  color: #ffe19d;
+  font-size: clamp(3rem, 8vw, 6.8rem);
+  line-height: 0.86;
+  letter-spacing: -0.06em;
+  text-shadow:
+    0 0 8px rgba(255, 210, 120, 0.86),
+    0 0 28px rgba(255, 92, 56, 0.5),
+    0 0 58px rgba(255, 92, 56, 0.24);
 }
 
 .station-meta,
@@ -403,31 +607,58 @@ h1 {
   color: #dbc8b8;
 }
 
+.station-kicker {
+  color: #ff785d;
+  text-shadow: 0 0 12px rgba(255, 77, 54, 0.7);
+}
+
 .station-meta {
-  margin-bottom: 14px;
-  font-size: 0.95rem;
+  margin-bottom: 12px;
+  color: rgba(255, 226, 177, 0.82);
+  font-size: clamp(0.92rem, 1.7vw, 1.2rem);
+  letter-spacing: 0.08em;
 }
 
 .station-tagline {
   margin-bottom: 0;
-  font-size: 1.02rem;
+  color: rgba(255, 224, 182, 0.9);
+  font-size: clamp(0.98rem, 1.7vw, 1.24rem);
+  letter-spacing: -0.02em;
+  text-transform: none;
+}
+
+.board-controls {
+  display: flex;
+  grid-area: controls;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: 0;
 }
 
 .play-button {
-  display: grid;
-  width: 148px;
-  height: 148px;
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  width: auto;
+  min-width: 98px;
+  height: 42px;
   place-items: center;
-  gap: 4px;
-  margin: 24px auto 20px;
-  border: 0;
+  gap: 8px;
+  margin: 0;
+  border: 1px solid rgba(255, 189, 98, 0.34);
   border-radius: 999px;
-  color: #170d08;
-  background: linear-gradient(135deg, #fff0d7, #c1854a 55%, #7f4e2d);
-  box-shadow: 0 22px 48px rgba(193, 133, 74, 0.24), inset 0 2px rgba(255, 255, 255, 0.58);
+  color: #ffe19d;
+  background:
+    linear-gradient(rgba(255, 224, 150, 0.08) 50%, transparent 50%) 0 0 / 100% 6px,
+    linear-gradient(180deg, rgba(42, 16, 10, 0.94), rgba(17, 9, 6, 0.96));
+  box-shadow:
+    inset 0 0 18px rgba(255, 123, 64, 0.16),
+    0 0 18px rgba(255, 97, 54, 0.12);
   cursor: pointer;
-  font-size: 1.02rem;
-  font-weight: 900;
+  font-family: "Courier New", ui-monospace, monospace;
+  font-size: 0.82rem;
+  font-weight: 950;
+  letter-spacing: 0.1em;
   transition: transform 180ms ease, filter 180ms ease, box-shadow 180ms ease;
 }
 
@@ -436,12 +667,15 @@ h1 {
 }
 
 .play-button.is-playing {
-  filter: saturate(0.96) brightness(0.94);
-  box-shadow: 0 22px 58px rgba(255, 189, 98, 0.26), inset 0 2px rgba(255, 255, 255, 0.58);
+  color: #ff785d;
+  filter: saturate(1.05) brightness(1.06);
+  box-shadow:
+    inset 0 0 20px rgba(255, 123, 64, 0.22),
+    0 0 22px rgba(255, 97, 54, 0.2);
 }
 
 .play-icon {
-  font-size: 3.2rem;
+  font-size: 1.02rem;
   line-height: 1;
 }
 
@@ -449,12 +683,17 @@ h1 {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin: 20px 0 0;
-  padding: 10px 14px;
+  margin: 0;
+  padding: 10px 13px;
+  border: 1px solid rgba(255, 189, 98, 0.18);
   border-radius: 999px;
   color: #ead7c5;
-  background: rgba(255, 255, 255, 0.07);
-  font-weight: 800;
+  background: rgba(20, 11, 8, 0.32);
+  font-family: "Courier New", ui-monospace, monospace;
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 .status-dot {
@@ -582,6 +821,73 @@ h1 {
   text-shadow: 0 0 14px rgba(255, 125, 115, 0.32);
 }
 
+@keyframes sign-sweep {
+  0%, 38% { transform: translateX(-52%); opacity: 0; }
+  52% { opacity: 1; }
+  78%, 100% { transform: translateX(52%); opacity: 0; }
+}
+
+@keyframes sign-pulse {
+  0%, 100% { opacity: 0.72; filter: brightness(1); }
+  50% { opacity: 0.96; filter: brightness(1.18); }
+}
+
+@keyframes nenne-bass-bounce {
+  0%, 50%, 100% { transform: translateY(0) scale(1) rotate(0deg); }
+  12.5%, 62.5% { transform: translateY(1px) scale(1.002) rotate(-0.22deg); }
+  25%, 75% { transform: translateY(-2px) scale(1.006) rotate(0.2deg); }
+  37.5%, 87.5% { transform: translateY(1px) scale(1.002) rotate(0.22deg); }
+}
+
+@keyframes nenne-gentle-nod {
+  0%, 100% { transform: rotate(-0.35deg) translateY(0); }
+  50% { transform: rotate(0.35deg) translateY(-1px); }
+}
+
+@keyframes nenne-frame-1 {
+  0%, 12.49%, 50%, 62.49% { opacity: 1; }
+  12.5%, 49.99%, 62.5%, 100% { opacity: 0; }
+}
+
+@keyframes nenne-frame-2 {
+  0%, 12.49%, 25%, 37.49%, 50%, 100% { opacity: 0; }
+  12.5%, 24.99%, 37.5%, 49.99% { opacity: 1; }
+}
+
+@keyframes nenne-frame-3 {
+  0%, 24.99%, 37.5%, 100% { opacity: 0; }
+  25%, 37.49% { opacity: 1; }
+}
+
+@keyframes nenne-frame-4 {
+  0%, 100% { opacity: 0; }
+}
+
+@keyframes nenne-frame-5 {
+  0%, 62.49%, 75%, 87.49% { opacity: 0; }
+  62.5%, 74.99%, 87.5%, 100% { opacity: 1; }
+}
+
+@keyframes nenne-frame-6 {
+  0%, 74.99%, 87.5%, 100% { opacity: 0; }
+  75%, 87.49% { opacity: 1; }
+}
+
+@keyframes nenne-listening {
+  0%, 100% { transform: rotate(-0.8deg) translateY(0); }
+  50% { transform: rotate(0.8deg) translateY(-3px); }
+}
+
+@keyframes nenne-loading-frames {
+  0%, 49.99% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+@keyframes nenne-loading-frame-4 {
+  0%, 49.99% { opacity: 0; }
+  50%, 100% { opacity: 1; }
+}
+
 @keyframes radio-groove {
   0%, 100% { transform: rotate(-0.5deg) translateY(0); }
   50% { transform: rotate(0.5deg) translateY(-2px); }
@@ -629,28 +935,185 @@ h1 {
   50% { transform: rotate(18deg); }
 }
 
+@media (min-width: 760px) {
+  .radio-card {
+    width: min(100%, 1180px);
+    max-height: calc(100svh - clamp(24px, 4.8vmin, 48px));
+    padding: clamp(18px, 2.2vmin, 26px);
+  }
+
+  .brand-row {
+    margin-bottom: 14px;
+  }
+
+  .club-board {
+    grid-template-columns: minmax(220px, 0.43fr) minmax(0, 1fr);
+    grid-template-areas:
+      "visual station"
+      "visual controls";
+    min-height: clamp(360px, 62svh, 590px);
+    margin-bottom: 14px;
+    padding: clamp(22px, 3.2vmin, 40px);
+  }
+
+  .visual-stage {
+    align-self: stretch;
+    min-height: 0;
+  }
+
+  .retro-radio {
+    width: min(100%, 360px);
+    height: clamp(210px, 31svh, 246px);
+  }
+
+  .nenne-dj {
+    width: min(100%, 360px);
+  }
+
+  .station-panel {
+    align-self: end;
+  }
+
+  .station-panel h2 {
+    font-size: clamp(4.2rem, 8.1vw, 7.6rem);
+  }
+
+  .board-controls {
+    align-self: start;
+  }
+
+  .error-box {
+    margin-bottom: 14px;
+  }
+
+  .volume-control {
+    margin-top: 0;
+  }
+
+  .hint {
+    margin: 12px 0 4px;
+    font-size: 0.86rem;
+    line-height: 1.45;
+  }
+}
+
+@media (min-width: 760px) and (max-height: 740px) {
+  .radio-card {
+    padding: 16px;
+    border-radius: 28px;
+  }
+
+  .brand-mark {
+    width: 44px;
+    height: 44px;
+    border-radius: 15px;
+  }
+
+  .brand-row {
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-size: clamp(1.45rem, 4vw, 2.02rem);
+  }
+
+  .eyebrow,
+  .station-kicker {
+    font-size: 0.68rem;
+  }
+
+  .club-board {
+    min-height: clamp(300px, 55svh, 410px);
+    margin-bottom: 10px;
+    padding: clamp(16px, 2.4vmin, 26px);
+  }
+
+  .retro-radio {
+    width: min(100%, 310px);
+    height: 198px;
+  }
+
+  .nenne-dj {
+    width: min(100%, 300px);
+  }
+
+  .station-panel h2 {
+    margin-bottom: 6px;
+    font-size: clamp(3.3rem, 7.1vw, 5.8rem);
+  }
+
+  .station-meta {
+    margin-bottom: 7px;
+    font-size: 0.86rem;
+  }
+
+  .station-tagline {
+    font-size: 0.92rem;
+  }
+
+  .play-button {
+    height: 38px;
+    min-width: 90px;
+    font-size: 0.76rem;
+  }
+
+  .status-pill {
+    padding: 8px 11px;
+    font-size: 0.76rem;
+  }
+
+  .volume-control {
+    gap: 10px;
+    font-size: 0.9rem;
+  }
+
+  .hint {
+    margin-top: 8px;
+    font-size: 0.78rem;
+  }
+}
+
 @media (max-width: 420px) {
   .app-shell {
     padding: 14px;
   }
 
   .radio-card {
-    padding: 22px;
+    padding: 18px;
     border-radius: 28px;
   }
 
   .brand-row {
-    margin-bottom: 16px;
+    margin-bottom: 14px;
+  }
+
+  .club-board {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "station"
+      "visual"
+      "controls";
+    min-height: auto;
+    padding: 18px;
+  }
+
+  .station-panel h2 {
+    font-size: clamp(2.75rem, 16vw, 4.7rem);
   }
 
   .visual-stage {
-    min-height: 226px;
+    min-height: 206px;
     padding-inline: 0;
   }
 
   .retro-radio {
     width: min(100%, 292px);
     height: 202px;
+  }
+
+  .nenne-dj {
+    width: min(100%, 300px);
   }
 
   .radio-body {
@@ -665,13 +1128,20 @@ h1 {
     transform: scale(0.9);
   }
 
-  .station-panel {
-    padding: 19px;
+  .board-controls {
+    justify-content: space-between;
+    gap: 8px;
   }
 
   .play-button {
-    width: 136px;
-    height: 136px;
+    min-width: 86px;
+    height: 38px;
+    font-size: 0.76rem;
+  }
+
+  .status-pill {
+    padding: 8px 10px;
+    font-size: 0.76rem;
   }
 }
 

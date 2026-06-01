@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
-import { DancingMascot } from './components/DancingMascot'
-import { RetroRadio } from './components/RetroRadio'
+import { NenneDJ } from './components/NenneDJ'
 import { getReconnectDelayMs, shouldAutoReconnect } from './reconnectPolicy'
 import { defaultStation } from './stations'
 
 type PlaybackState = 'idle' | 'loading' | 'playing' | 'paused' | 'error'
+type AudioMood = 'silent' | 'voice' | 'music'
+type AudioContextConstructor = typeof AudioContext
 
 const statusCopy: Record<PlaybackState, string> = {
   idle: '대기 중',
@@ -17,20 +18,32 @@ const statusCopy: Record<PlaybackState, string> = {
 
 const MAX_AUTO_RECONNECT_ATTEMPTS = 8
 const STALL_RECONNECT_DELAY_MS = 12000
+const AUDIO_ANALYSIS_INTERVAL_MS = 220
+const AUDIO_MUSIC_RMS_THRESHOLD = 0.052
+const AUDIO_VOICE_RMS_THRESHOLD = 0.017
+const AUDIO_SILENCE_RMS_THRESHOLD = 0.011
+const AUDIO_DYNAMIC_THRESHOLD = 0.014
 
 function App() {
   const station = defaultStation
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const audioAnalysisTimerRef = useRef<number | null>(null)
+  const audioSourceCreatedRef = useRef(false)
+  const recentRmsRef = useRef<number[]>([])
+  const audioAnalysisUnavailableRef = useRef(false)
   const reconnectTimeoutRef = useRef<number | null>(null)
   const stallTimeoutRef = useRef<number | null>(null)
   const reconnectAttemptsRef = useRef(0)
   const userWantsPlaybackRef = useRef(false)
   const [playbackState, setPlaybackState] = useState<PlaybackState>('idle')
+  const [audioMood, setAudioMood] = useState<AudioMood>('silent')
   const [volume, setVolume] = useState(0.82)
   const [errorMessage, setErrorMessage] = useState('')
 
   const isPlaying = playbackState === 'playing' || playbackState === 'loading'
-  const cardClassName = `radio-card state-${playbackState}`
+  const cardClassName = `radio-card state-${playbackState} audio-${audioMood}`
 
   const mediaMetadata = useMemo(
     () => ({
@@ -52,6 +65,99 @@ function App() {
     window.clearTimeout(stallTimeoutRef.current)
     stallTimeoutRef.current = null
   }, [])
+
+  const stopAudioAnalysis = useCallback(() => {
+    if (audioAnalysisTimerRef.current === null) return
+    window.clearInterval(audioAnalysisTimerRef.current)
+    audioAnalysisTimerRef.current = null
+    recentRmsRef.current = []
+  }, [])
+
+  const setupAudioAnalysis = useCallback(async () => {
+    const audio = audioRef.current
+    if (!audio || audioAnalysisUnavailableRef.current) return false
+
+    try {
+      const AudioContextClass = (window.AudioContext
+        || (window as Window & { webkitAudioContext?: AudioContextConstructor }).webkitAudioContext) as AudioContextConstructor | undefined
+      if (!AudioContextClass) return false
+
+      const audioContext = audioContextRef.current ?? new AudioContextClass()
+      audioContextRef.current = audioContext
+
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume()
+      }
+
+      if (!analyserRef.current) {
+        analyserRef.current = audioContext.createAnalyser()
+        analyserRef.current.fftSize = 1024
+        analyserRef.current.smoothingTimeConstant = 0.78
+      }
+
+      if (!audioSourceCreatedRef.current) {
+        const source = audioContext.createMediaElementSource(audio)
+        source.connect(analyserRef.current)
+        analyserRef.current.connect(audioContext.destination)
+        audioSourceCreatedRef.current = true
+      }
+
+      return true
+    } catch (error) {
+      audioAnalysisUnavailableRef.current = true
+      setAudioMood('music')
+      return false
+    }
+  }, [])
+
+  const startAudioAnalysis = useCallback(() => {
+    stopAudioAnalysis()
+
+    const analyser = analyserRef.current
+    const audio = audioRef.current
+    if (!analyser || !audio) return
+
+    const frequencyData = new Uint8Array(analyser.frequencyBinCount)
+    let silentTicks = 0
+
+    const analyze = () => {
+      if (audio.paused || audio.ended || !userWantsPlaybackRef.current) {
+        setAudioMood('silent')
+        return
+      }
+
+      analyser.getByteFrequencyData(frequencyData)
+
+      const normalized = Array.from(frequencyData, (value) => value / 255)
+      const rms = Math.sqrt(normalized.reduce((sum, value) => sum + value * value, 0) / normalized.length)
+      const bassEnd = Math.max(4, Math.floor(normalized.length * 0.16))
+      const bass = normalized.slice(0, bassEnd).reduce((sum, value) => sum + value, 0) / bassEnd
+      const recent = [...recentRmsRef.current.slice(-7), rms]
+      recentRmsRef.current = recent
+      const mean = recent.reduce((sum, value) => sum + value, 0) / recent.length
+      const dynamics = recent.reduce((sum, value) => sum + Math.abs(value - mean), 0) / recent.length
+
+      let nextMood: AudioMood = 'voice'
+      if (rms < AUDIO_SILENCE_RMS_THRESHOLD) {
+        silentTicks += 1
+        nextMood = silentTicks > 10 ? 'voice' : 'silent'
+      } else if (
+        rms > AUDIO_MUSIC_RMS_THRESHOLD
+        || (rms > AUDIO_VOICE_RMS_THRESHOLD && bass > AUDIO_MUSIC_RMS_THRESHOLD && dynamics > AUDIO_DYNAMIC_THRESHOLD)
+      ) {
+        silentTicks = 0
+        nextMood = 'music'
+      } else {
+        silentTicks = 0
+        nextMood = rms > AUDIO_VOICE_RMS_THRESHOLD ? 'voice' : 'silent'
+      }
+
+      setAudioMood((currentMood) => (currentMood === nextMood ? currentMood : nextMood))
+    }
+
+    analyze()
+    audioAnalysisTimerRef.current = window.setInterval(analyze, AUDIO_ANALYSIS_INTERVAL_MS)
+  }, [stopAudioAnalysis])
 
   const startPlayback = useCallback(async (forceFreshStream = false) => {
     const audio = audioRef.current
@@ -75,6 +181,10 @@ function App() {
 
     try {
       await audio.play()
+      const canAnalyzeAudio = await setupAudioAnalysis()
+      if (canAnalyzeAudio) {
+        startAudioAnalysis()
+      }
       reconnectAttemptsRef.current = 0
       setPlaybackState('playing')
     } catch (error) {
@@ -82,7 +192,7 @@ function App() {
       setPlaybackState('error')
       setErrorMessage(message)
     }
-  }, [clearReconnectTimer, clearStallTimer, station.streamUrl])
+  }, [clearReconnectTimer, clearStallTimer, setupAudioAnalysis, startAudioAnalysis, station.streamUrl])
 
   const scheduleAutoReconnect = useCallback((reason: string) => {
     clearReconnectTimer()
@@ -121,10 +231,12 @@ function App() {
     reconnectAttemptsRef.current = 0
     clearReconnectTimer()
     clearStallTimer()
+    stopAudioAnalysis()
     audio.pause()
+    setAudioMood('silent')
     setErrorMessage('')
     setPlaybackState('paused')
-  }, [clearReconnectTimer, clearStallTimer])
+  }, [clearReconnectTimer, clearStallTimer, stopAudioAnalysis])
 
   const reconnect = useCallback(async () => {
     userWantsPlaybackRef.current = true
@@ -201,8 +313,9 @@ function App() {
       audio.removeEventListener('ended', handleEnded)
       clearReconnectTimer()
       clearStallTimer()
+      stopAudioAnalysis()
     }
-  }, [clearReconnectTimer, clearStallTimer, scheduleAutoReconnect])
+  }, [clearReconnectTimer, clearStallTimer, scheduleAutoReconnect, stopAudioAnalysis])
 
   useEffect(() => {
     if (!('mediaSession' in navigator)) return
@@ -240,32 +353,35 @@ function App() {
           </div>
         </div>
 
-        <div className="visual-stage">
-          <RetroRadio state={playbackState} />
-          <DancingMascot state={playbackState} />
-        </div>
+        <div className="club-board">
+          <div className="visual-stage">
+            <NenneDJ state={playbackState} />
+          </div>
 
-        <div className="station-panel">
-          <p className="station-kicker">ON AIR FROM LA</p>
-          <h2>{station.name}</h2>
-          <p className="station-meta">{station.city} · {station.country} · {station.codecHint.toUpperCase()}</p>
-          <p className="station-tagline">{station.tagline}</p>
-        </div>
+          <div className="station-panel">
+            <p className="station-kicker">ON AIR FROM LA</p>
+            <h2>{station.name}</h2>
+            <p className="station-meta">{station.city} · {station.country} · {station.codecHint.toUpperCase()}</p>
+            <p className="station-tagline">{station.tagline}</p>
+          </div>
 
-        <div className={`status-pill status-${playbackState}`} role="status" aria-live="polite">
-          <span className="status-dot" aria-hidden="true" />
-          {statusCopy[playbackState]}
-        </div>
+          <div className="board-controls">
+            <div className={`status-pill status-${playbackState}`} role="status" aria-live="polite">
+              <span className="status-dot" aria-hidden="true" />
+              {statusCopy[playbackState]}
+            </div>
 
-        <button
-          className={`play-button ${isPlaying ? 'is-playing' : ''}`}
-          type="button"
-          onClick={togglePlayback}
-          aria-label={isPlaying ? '라디오 일시정지' : '라디오 재생'}
-        >
-          <span className="play-icon" aria-hidden="true">{isPlaying ? 'Ⅱ' : '▶'}</span>
-          <span>{isPlaying ? '잠시 멈추기' : '라디오 켜기'}</span>
-        </button>
+            <button
+              className={`play-button ${isPlaying ? 'is-playing' : ''}`}
+              type="button"
+              onClick={togglePlayback}
+              aria-label={isPlaying ? '라디오 일시정지' : '라디오 재생'}
+            >
+              <span className="play-icon" aria-hidden="true">{isPlaying ? 'Ⅱ' : '▶'}</span>
+              <span>{isPlaying ? 'STOP' : 'PLAY'}</span>
+            </button>
+          </div>
+        </div>
 
         {errorMessage && (
           <div className="error-box">
