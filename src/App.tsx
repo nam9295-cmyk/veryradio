@@ -354,22 +354,6 @@ function App() {
         </div>
 
         <div className="club-board">
-          <div className="pixel-palms" aria-hidden="true">
-            <span className="pixel-sun" />
-            <span className="pixel-palm pixel-palm-left">
-              <span className="palm-leaf palm-leaf-a" />
-              <span className="palm-leaf palm-leaf-b" />
-              <span className="palm-leaf palm-leaf-c" />
-              <span className="palm-trunk" />
-            </span>
-            <span className="pixel-palm pixel-palm-right">
-              <span className="palm-leaf palm-leaf-a" />
-              <span className="palm-leaf palm-leaf-b" />
-              <span className="palm-leaf palm-leaf-c" />
-              <span className="palm-trunk" />
-            </span>
-          </div>
-
           <div className="visual-stage">
             <NenneDJ state={playbackState} />
           </div>
