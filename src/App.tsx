@@ -354,14 +354,30 @@ function App() {
         </div>
 
         <div className="club-board">
+          <div className="pixel-palms" aria-hidden="true">
+            <span className="pixel-sun" />
+            <span className="pixel-palm pixel-palm-left">
+              <span className="palm-leaf palm-leaf-a" />
+              <span className="palm-leaf palm-leaf-b" />
+              <span className="palm-leaf palm-leaf-c" />
+              <span className="palm-trunk" />
+            </span>
+            <span className="pixel-palm pixel-palm-right">
+              <span className="palm-leaf palm-leaf-a" />
+              <span className="palm-leaf palm-leaf-b" />
+              <span className="palm-leaf palm-leaf-c" />
+              <span className="palm-trunk" />
+            </span>
+          </div>
+
           <div className="visual-stage">
             <NenneDJ state={playbackState} />
           </div>
 
           <div className="station-panel">
-            <p className="station-kicker">ON AIR FROM LA</p>
+            <p className="station-kicker">LIVE FROM LOS ANGELES</p>
             <h2>{station.name}</h2>
-            <p className="station-meta">{station.city} · {station.country} · {station.codecHint.toUpperCase()}</p>
+            <p className="station-meta">{station.city} · {station.country} · LIVE MUSIC</p>
             <p className="station-tagline">{station.tagline}</p>
           </div>
 

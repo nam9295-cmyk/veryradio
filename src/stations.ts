@@ -10,11 +10,11 @@ export type Station = {
 
 export const stations: Station[] = [
   {
-    id: 'kiis-fm-la',
-    name: 'KIIS FM 102.7',
-    city: 'Los Angeles',
-    country: 'USA',
-    tagline: '매장에 흐르는 LA 팝 라디오',
+    id: 'la-night-groove',
+    name: 'LA NIGHT GROOVE',
+    city: 'Palm City',
+    country: 'West Coast',
+    tagline: '야자수 아래 흐르는 LA 음악 방송 무드',
     streamUrl: 'https://stream.revma.ihrhls.com/zc185',
     codecHint: 'aac',
   },
