@@ -30,6 +30,7 @@ function App() {
   const audioContextRef = useRef<AudioContext | null>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
   const audioAnalysisTimerRef = useRef<number | null>(null)
+  const audioMoodFallbackTimerRef = useRef<number | null>(null)
   const audioSourceCreatedRef = useRef(false)
   const recentRmsRef = useRef<number[]>([])
   const audioAnalysisUnavailableRef = useRef(false)
@@ -67,9 +68,14 @@ function App() {
   }, [])
 
   const stopAudioAnalysis = useCallback(() => {
-    if (audioAnalysisTimerRef.current === null) return
-    window.clearInterval(audioAnalysisTimerRef.current)
-    audioAnalysisTimerRef.current = null
+    if (audioAnalysisTimerRef.current !== null) {
+      window.clearInterval(audioAnalysisTimerRef.current)
+      audioAnalysisTimerRef.current = null
+    }
+    if (audioMoodFallbackTimerRef.current !== null) {
+      window.clearTimeout(audioMoodFallbackTimerRef.current)
+      audioMoodFallbackTimerRef.current = null
+    }
     recentRmsRef.current = []
   }, [])
 
@@ -80,7 +86,11 @@ function App() {
     try {
       const AudioContextClass = (window.AudioContext
         || (window as Window & { webkitAudioContext?: AudioContextConstructor }).webkitAudioContext) as AudioContextConstructor | undefined
-      if (!AudioContextClass) return false
+      if (!AudioContextClass) {
+        audioAnalysisUnavailableRef.current = true
+        setAudioMood('music')
+        return false
+      }
 
       const audioContext = audioContextRef.current ?? new AudioContextClass()
       audioContextRef.current = audioContext
@@ -103,7 +113,7 @@ function App() {
       }
 
       return true
-    } catch (error) {
+    } catch {
       audioAnalysisUnavailableRef.current = true
       setAudioMood('music')
       return false
@@ -119,6 +129,15 @@ function App() {
 
     const frequencyData = new Uint8Array(analyser.frequencyBinCount)
     let silentTicks = 0
+
+    audioMoodFallbackTimerRef.current = window.setTimeout(() => {
+      if (!audio.paused && !audio.ended && userWantsPlaybackRef.current) {
+        const hasReadableSignal = recentRmsRef.current.some((rms) => rms > AUDIO_SILENCE_RMS_THRESHOLD)
+        if (!hasReadableSignal) {
+          setAudioMood('music')
+        }
+      }
+    }, 1800)
 
     const analyze = () => {
       if (audio.paused || audio.ended || !userWantsPlaybackRef.current) {
@@ -140,7 +159,8 @@ function App() {
       let nextMood: AudioMood = 'voice'
       if (rms < AUDIO_SILENCE_RMS_THRESHOLD) {
         silentTicks += 1
-        nextMood = silentTicks > 10 ? 'voice' : 'silent'
+        const noReadableSignal = silentTicks > 8 && recent.every((value) => value < AUDIO_SILENCE_RMS_THRESHOLD)
+        nextMood = noReadableSignal ? 'music' : 'silent'
       } else if (
         rms > AUDIO_MUSIC_RMS_THRESHOLD
         || (rms > AUDIO_VOICE_RMS_THRESHOLD && bass > AUDIO_MUSIC_RMS_THRESHOLD && dynamics > AUDIO_DYNAMIC_THRESHOLD)
@@ -184,6 +204,8 @@ function App() {
       const canAnalyzeAudio = await setupAudioAnalysis()
       if (canAnalyzeAudio) {
         startAudioAnalysis()
+      } else {
+        setAudioMood('music')
       }
       reconnectAttemptsRef.current = 0
       setPlaybackState('playing')
