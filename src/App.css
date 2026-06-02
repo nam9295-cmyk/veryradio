@@ -438,28 +438,20 @@ h1 {
   animation: sign-pulse 2.4s ease-in-out infinite;
 }
 
-.state-playing.audio-music .nenne-dj {
+.state-playing .nenne-dj {
   animation: nenne-bass-bounce 1.9s steps(8, end) infinite;
 }
 
-.state-playing.audio-music .nenne-dj-frame {
+.state-playing .nenne-dj-frame {
   animation: nenne-dj-frames 1.9s steps(1, end) infinite;
 }
 
-.state-playing.audio-music .nenne-dj-frame-1 { animation-name: nenne-frame-1; }
-.state-playing.audio-music .nenne-dj-frame-2 { animation-name: nenne-frame-2; }
-.state-playing.audio-music .nenne-dj-frame-3 { animation-name: nenne-frame-3; }
-.state-playing.audio-music .nenne-dj-frame-4 { animation-name: nenne-frame-4; }
-.state-playing.audio-music .nenne-dj-frame-5 { animation-name: nenne-frame-5; }
-.state-playing.audio-music .nenne-dj-frame-6 { animation-name: nenne-frame-6; }
-
-.state-playing.audio-voice .nenne-dj {
-  animation: nenne-gentle-nod 2.6s ease-in-out infinite;
-}
-
-.state-playing.audio-silent .nenne-dj {
-  transform: rotate(-0.6deg);
-}
+.state-playing .nenne-dj-frame-1 { animation-name: nenne-frame-1; }
+.state-playing .nenne-dj-frame-2 { animation-name: nenne-frame-2; }
+.state-playing .nenne-dj-frame-3 { animation-name: nenne-frame-3; }
+.state-playing .nenne-dj-frame-4 { animation-name: nenne-frame-4; }
+.state-playing .nenne-dj-frame-5 { animation-name: nenne-frame-5; }
+.state-playing .nenne-dj-frame-6 { animation-name: nenne-frame-6; }
 
 .state-loading .nenne-dj {
   animation: nenne-listening 1.15s ease-in-out infinite;
@@ -1153,5 +1145,11 @@ h1 {
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: 0.001ms !important;
+  }
+
+  .state-playing .nenne-dj,
+  .state-playing .nenne-dj-frame {
+    animation-duration: 1.9s !important;
+    animation-iteration-count: infinite !important;
   }
 }
